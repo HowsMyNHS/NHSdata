@@ -343,15 +343,16 @@ def sort_data(allNames, data, unsorted_periods):
         #print(type(month_data),type(weekly_data))
         final_attendence[i,:] = np.concatenate((month_data, weekly_data[::-1]))
         
+    return final_attendence, periods
+
+def get_numpy_dates(periods):
     months = []
     for period in periods:
         year = float(period.split('/')[1])
         month = float(period.split('/')[0])
         months.append(year+month/12)
     months = np.asarray(months)
-        
-    return final_attendence, months
-
+    return months
 
 def tidy_data(data):
     #Delete the nan line
