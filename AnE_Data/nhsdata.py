@@ -118,8 +118,16 @@ def get_all_names(latestSheet, verbose = 0):
                           "University Hospital Of South Manchester NHS Foundation Trust"])
 
     allNames = np.concatenate((currentNames, oldTrusts))
+    
+    # Remove all nan entries except the first one (I think I actually could remove the first one?)
+    allNames[1] = "-"
+    allNames2 = []
+    for name in allNames:
+        if type(name) == str:
+            allNames2.append(name)
     os.remove("tempfile.xls")
-    return allNames
+    
+    return allNames2
 
 
 ############################################################################################
@@ -356,8 +364,9 @@ def get_numpy_dates(periods):
 
 def tidy_data(data):
     #Delete the nan line
-    if data[1,0] == "-":
-        data = np.delete(data, 1, axis=0)
+#     if data[1,0] == "-":
+#         print("deleting line")
+#         data = np.delete(data, 1, axis=0)
 
     for i in range(len(data[:,0])):
         for j in range(len(data[i,:])):
