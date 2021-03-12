@@ -127,7 +127,7 @@ def get_all_names(latestSheet, verbose = 0):
             allNames2.append(name)
     os.remove("tempfile.xls")
     
-    return allNames2
+    return np.asarray(allNames2)
 
 
 ############################################################################################
@@ -162,7 +162,7 @@ def collectData(data, allNames, verbose = 0):
     # Make vectorised int function
     vecint = np.vectorize(int)
     
-    missing = []
+    #missing = []
     attendences2 = np.zeros((len(allNames), len(data)),dtype=object) 
     attendences2[:,:] = '-'
     over4hours = np.zeros((len(allNames), len(data)),dtype=object) 
@@ -184,6 +184,7 @@ def collectData(data, allNames, verbose = 0):
         sheetTest = sheet
 
         names = sheet['Name'].values  
+        
         all_attendence = sheet["Total attendances"]
 
         # Get the total attendance
@@ -191,7 +192,6 @@ def collectData(data, allNames, verbose = 0):
             attendence = sheet["Total attendances"][0]
         except:
             attendence = sheet["Total Attendances"][0]
-
 
         # Try each of the three attendance column headers
         if try1(sheet):
@@ -215,6 +215,8 @@ def collectData(data, allNames, verbose = 0):
             all_over4hours[:] = '-'
             mask = makeDataMask(sample)
             all_over4hours[mask] = vecint((1-sample[mask])*all_attendence.values[mask])
+        else:
+            raise Exception("Unexpected header!")
 
         for j, fname in enumerate(allNames):
             if fname in names:
@@ -224,26 +226,15 @@ def collectData(data, allNames, verbose = 0):
 
                 # Save waiting data
                 num_waiting = all_over4hours[names==fname]
-                over4hours[:,i][allNames==fname] = num_waiting
-
+                over4hours[:,i][allNames == fname] = num_waiting
             # Combine Luton + Dunst Hosp with Luton + Dunst *Uni* Hosp
-            if "Luton And Dunstable Hospital NHS Foundation Trust" in names:
+            elif "Luton And Dunstable Hospital NHS Foundation Trust" in names:
                 hospital_attendence = all_attendence[names=="Luton And Dunstable Hospital NHS Foundation Trust"]
                 attendences2[:,i][allNames=="Luton And Dunstable University Hospital NHS Foundation Trust"] = hospital_attendence
 
                 # Save waiting data
                 num_waiting = all_over4hours[names=="Luton And Dunstable Hospital NHS Foundation Trust"]
                 over4hours[:,i][allNames=="Luton And Dunstable University Hospital NHS Foundation Trust"] = num_waiting
-
-            else:
-                #print("Error: {} not found".format(fname))
-                pass
-
-        # checking for missing names
-        for test_name in names:
-            if test_name not in allNames and test_name not in missing:
-                #print("Error: {} has no home".format(test_name))
-                missing.append(test_name)
 
         # Get cell containing the data period
         sheet = pd.read_excel('tempfile.xls', sheet_name=0, skiprows=5, usecols="C")
@@ -253,7 +244,7 @@ def collectData(data, allNames, verbose = 0):
 
         if verbose == 0:
             print("{} complete of {}...".format(i+1,len(data)),end = "\r")
-    
+            
     os.remove("tempfile.xls")
     return attendences2, over4hours, periods2
 
