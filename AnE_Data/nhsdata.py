@@ -248,6 +248,89 @@ def collectData(data, allNames, verbose = 0):
     os.remove("tempfile.xls")
     return attendences2, over4hours, periods2
 
+def collectType1Data(data, allNames, verbose = 0):
+
+    def makeDataMask(data):
+        dataMask = np.zeros(len(data),dtype=bool)
+        for c, cell in enumerate(data):
+            if type(cell)==str or np.isnan(cell):
+                dataMask[c]=False
+            else:
+                dataMask[c]=True
+        return dataMask
+    # Make vectorised int function
+    vecint = np.vectorize(int)
+    
+    #missing = []
+    attendences2 = np.zeros((len(allNames), len(data)),dtype=object) 
+    attendences2[:,:] = '-'
+    over4hours = np.zeros((len(allNames), len(data)),dtype=object) 
+    over4hours[:,:] = '-'
+    periods2 = np.zeros(len(data),dtype = object)
+    
+    for i, name in enumerate(data):   
+        #print(name)
+        # Get the data location
+        resp = requests.get(name)
+
+        # Store the data in a temporary file
+        tempfile = open('tempfile.xls', 'wb')
+        tempfile.write(resp.content)
+        tempfile.close()
+
+        # Get all of the data from row 16 with columns A to N
+        # I don't think this is how try is supposed to be used but it works
+        sheet = pd.read_excel('tempfile.xls', sheet_name=0, skiprows=15)
+        sheetTest = sheet
+
+        names = sheet['Name'].values  
+        
+        all_attendence = sheet["Total attendances"]
+
+        # Get the total attendance
+        attendence = sheet["Type 1 Departments - Major A&E"][0]
+
+        sample = sheet["Percentage in 4 hours or less (type 1)"].values
+        all_over4hours = np.zeros(len(sample),dtype=object)
+        all_over4hours[:] = '-'
+        mask = makeDataMask(sample)
+        all_over4hours[mask] = sample[mask]
+        
+        for j, fname in enumerate(allNames):
+            if fname in names:
+                # Save attendance data
+                hospital_attendence = all_attendence[names==fname]
+                attendences2[:,i][allNames==fname] = hospital_attendence
+
+                # Save waiting data
+                num_waiting = all_over4hours[names==fname][0]
+#                 if num_waiting != "-":
+#                     num_waiting = (1 - num_waiting)*hospital_attendence
+                
+                over4hours[:,i][allNames == fname] = num_waiting
+            # Combine Luton + Dunst Hosp with Luton + Dunst *Uni* Hosp
+            elif "Luton And Dunstable Hospital NHS Foundation Trust" in names:
+                hospital_attendence = all_attendence[names=="Luton And Dunstable Hospital NHS Foundation Trust"]
+                attendences2[:,i][allNames=="Luton And Dunstable University Hospital NHS Foundation Trust"] = hospital_attendence
+
+                # Save waiting data
+                num_waiting = all_over4hours[names=="Luton And Dunstable Hospital NHS Foundation Trust"][0]
+#                 if num_waiting != "-":
+#                     num_waiting = (1 - num_waiting)*hospital_attendence
+                over4hours[:,i][allNames=="Luton And Dunstable University Hospital NHS Foundation Trust"] = num_waiting*hospital_attendence
+
+        # Get cell containing the data period
+        sheet = pd.read_excel('tempfile.xls', sheet_name=0, skiprows=5, usecols="C")
+        period = sheet.columns[0]
+        #print(period)
+        periods2[i] = period
+
+        if verbose == 0:
+            print("{} complete of {}...".format(i+1,len(data)),end = "\r")
+            
+    os.remove("tempfile.xls")
+    return attendences2, over4hours, periods2
+
 ########################################################################################
 #################################### Sort out dates ####################################
 ########################################################################################
